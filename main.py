@@ -1,4 +1,3 @@
-from __future__ import print_function
 from imutils.video import WebcamVideoStream
 import ShootingUDPServer
 import imutils
@@ -7,7 +6,7 @@ import cv2
 import numpy as np
 
 
-vid = WebcamVideoStream(src=0).start()
+vid = WebcamVideoStream(src=1).start()
 server = ShootingUDPServer.ShootingUDPServer().start()
 
 max = 0
@@ -18,6 +17,7 @@ t = 240
 curPoint = 0
 increment = 10
 points_src = np.array([[0, 0], [320, 0], [320, 240], [0, 240]], dtype=np.float32)
+#points_src = np.array([[53,67],[256,73],[252,183],[55,186]], dtype=np.float32)
 triggered = False
 waiting = False
 cooldown_time = 0.5
@@ -35,6 +35,7 @@ while (True):
     if (smallgray.max() > max):
         max = smallgray.max()
 
+    #DETERMINATION OF HIGHEST LIGHT CENTERED POINT AFTER THRESHOLD
     contours, hierarchy = cv2.findContours(threshold, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_SIMPLE)
     if contours and not triggered:
         triggered = True
@@ -46,14 +47,12 @@ while (True):
         cv2.circle(small, center, radius, (0, 255, 0), 1)
         if (debug):
             cv2.drawContours(small, [sorted_contours[0]], -1, (255, 0, 0), 1)
-
-        points_src = np.array([[0, 0], [320, 0], [320, 240], [0, 240]], dtype=np.float32)
         point_p = np.array(center, dtype=np.float32)
-        
-        
-
+        # # Matriz de transformación proyectiva
         matrix = cv2.getPerspectiveTransform(points_src, np.array([[0, 0], [320, 0], [320, 240], [0, 240]], dtype=np.float32))
+        # # Transformación proyectiva del punto P
         point_p_transformed = cv2.perspectiveTransform(point_p.reshape(1, -1, 2), matrix)
+        # # Coordenadas del punto P_p(x,y) transformado
         x_p_transformed, y_p_transformed = point_p_transformed[0][0]
         if waiting:
                 points_src[curPoint][0] = x
@@ -62,6 +61,7 @@ while (True):
         if  x_p_transformed >= 0 and x_p_transformed < 320 and y_p_transformed >= 0 and y_p_transformed<240:
             cv2.circle(small, (int(point_p[0]), int(point_p[1])), 0, (0, 255, 0), 3)
             cv2.circle(small, (int(x_p_transformed), int(y_p_transformed)), 0, (0, 0, 255), 3)
+            # print(f"La coordenada del punto P transformado es ({x_p_transformed}, {y_p_transformed})")
             print(f"({x_p_transformed}, {y_p_transformed})")
             server.send(msg = str(x_p_transformed) + ", " + str(y_p_transformed))
 
